@@ -9,7 +9,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/Sesiones';
 
-// Conexion a MongoDB
+// Conexión a MongoDB
 mongoose.connect(MONGO_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
@@ -17,7 +17,6 @@ mongoose.connect(MONGO_URI, {
 
 const db = mongoose.connection;
 db.on('error', console.error.bind(console, 'MongoDB connection error:'));
-
 db.once('open', async () => {
   console.log('Connected to MongoDB');
 });
@@ -27,12 +26,11 @@ const userSchema = new mongoose.Schema({
   username: String,
   password: String,
 });
-
 const User = mongoose.model('User', userSchema);
 
+// Middleware
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(express.static(path.join(__dirname, 'public')));
-
 app.use(
   session({
     secret: 'mi-clave-secreta',
@@ -43,60 +41,60 @@ app.use(
   })
 );
 
-
-// Página de inicio (tienda de juegos)
+// Ruta principal - redirige según el estado de sesión
 app.get('/', (req, res) => {
-  if (!req.session.user) {
-    return res.redirect('/login');
+  if (req.session.user) {
+    return res.redirect('/store');
   }
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  res.redirect('/login');
 });
 
-// Formulario de inicio de sesión
+// Página de login
 app.get('/login', (req, res) => {
   if (req.session.user) {
-    return res.redirect('/');
-=======
-app.get('/', (req, res) => {
-  if (req.session.user) {
-    return res.redirect('/welcome');
-
+    return res.redirect('/store');
   }
   res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
 
+// Procesar login
 app.post('/login', async (req, res) => {
   const { username, password } = req.body;
-  const user = await User.findOne({ username, password }).exec();
-  if (user) {
-    req.session.user = user.username;
-
-    return res.redirect('/');
+  
+  try {
+    const user = await User.findOne({ username, password }).exec();
+    
+    if (user) {
+      req.session.user = user.username;
+      return res.redirect('/store');
+    } else {
+      return res.redirect('/login?error=credenciales');
+    }
+  } catch (error) {
+    console.error('Error during login:', error);
+    return res.redirect('/login?error=servidor');
   }
-  return res.redirect('/login?error=credenciales');
 });
 
-=======
-    return res.redirect('/welcome');
-  } else {
-    return res.redirect('/?error=credenciales');
-  }
-});
-
-app.get('/welcome', (req, res) => {
+// Página de la tienda (requiere sesión)
+app.get('/store', (req, res) => {
   if (!req.session.user) {
-    return res.redirect('/');
+    return res.redirect('/login');
   }
-  res.sendFile(path.join(__dirname, 'public', 'welcome.html'));
+  res.sendFile(path.join(__dirname, 'public', 'store.html'));
 });
 
-
+// Logout
 app.get('/logout', (req, res) => {
-  req.session.destroy(() => {
+  req.session.destroy((err) => {
+    if (err) {
+      console.error('Error destroying session:', err);
+    }
     res.redirect('/');
   });
 });
 
+// Iniciar servidor
 app.listen(PORT, () => {
   console.log(`Servidor iniciado en http://localhost:${PORT}`);
 });
