@@ -43,9 +43,18 @@ app.use(
   })
 );
 
+// Página de inicio (tienda de juegos)
 app.get('/', (req, res) => {
+  if (!req.session.user) {
+    return res.redirect('/login');
+  }
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Formulario de inicio de sesión
+app.get('/login', (req, res) => {
   if (req.session.user) {
-    return res.redirect('/welcome');
+    return res.redirect('/');
   }
   res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
@@ -55,18 +64,11 @@ app.post('/login', async (req, res) => {
   const user = await User.findOne({ username, password }).exec();
   if (user) {
     req.session.user = user.username;
-    return res.redirect('/welcome');
-  } else {
-    return res.redirect('/?error=credenciales');
-  }
-});
-
-app.get('/welcome', (req, res) => {
-  if (!req.session.user) {
     return res.redirect('/');
   }
-  res.sendFile(path.join(__dirname, 'public', 'welcome.html'));
+  return res.redirect('/login?error=credenciales');
 });
+
 
 app.get('/logout', (req, res) => {
   req.session.destroy(() => {
